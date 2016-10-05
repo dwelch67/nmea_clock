@@ -1,0 +1,202 @@
+
+So clocks that drift, and have to be adjusted regularly tend to
+annoy me.  Our cell/mobile phones get their time from the network
+and are accurate.  Radio or Atomic clocks that you can buy at Target,
+Walmart, Amazon, etc operate off of the WWVB
+
+https://en.wikipedia.org/wiki/WWVB
+
+Here is the problem, or is it a problem?  You cant easil by WWVB
+receivers anymore.  You can buy one of these clocks and rip it apart
+to get the radio out.  But there is no need, GPS receivers can be
+had now for $10-$15 with the antenna included.  And for a GPS to
+work at all you need to know how far away you are from two or more
+satellites and then compute your location based on that distance.
+How do you know how far away you are?  Time.  Very accurate time, if
+you are further away from one than the other then the signal you get
+from one is later than the other.  You can use the pulse per second
+strobe (PPS) to get even more accurate, but one second is good enough
+for me.  Note to use the PPS you have to know whether to look for
+the rising edge or falling edge, some are programmable (dont assume
+they all do the same thing), and the few I read up on, you parse the
+time from the NMEA sentences and then when you see the pulse it is
+the timestamp plus one second.
+
+Anyway, so a GPS receiver does/should cost less than a WWVB receiver
+and is very accurate.  Both need to be near a window or somewhere
+where they can get the respective signal.
+
+The vast majority and perhaps all (I certainly dont have nor have
+research every one, but have many) output a serial (UART) stream
+at TTL levels 5V and more recently 3.3V.  Understand that RS-232,
+RS-232C, EIA-422 are all INCORRECT terms here.  They define voltage
+standards and pinout standards, they do not define the serial stream
+start bit stop bits and such.  Very common mistake to use and spread
+those terms.  Whatever term you want to use they ideally mate directly
+up to your microcontroller or embedded processor.  Have to deal with
+5V/3.3V level conversions sure.  (Yes there are some sealed ones with
+a magnet and long cable ready to stick to the top of a vehicle and
+those may very well have a serial port with RS-232C levels).
+
+The ASCII stream that comes out of the GPS is defined by the
+
+National Marine Electronics Association or NMEA
+
+If you google NMEA sentences you find a site like
+
+http://www.gpsinformation.org/dale/nmea.htm
+
+I dont have any official copies of the spec.  Really dont need to
+there is enough information from results of a search above or by
+just looking at the output of the GPS receiver module.
+
+There is one sentence that one might care about initially, RMC.
+Ideally every GPS receiver spits these out and so far I would agree
+with that.  Sometimes you see just RMC documented somewhere and
+sometimes GPRMC, I have always seen two characters in front, not always
+"GP" but in the last 10 or so years that is all I have seen.  So will
+go with that.
+
+For time the one we care about is
+
+$GPRMC,235946.084,V,,,,,,,310109,,,N*44
+
+If you connect the GPS output to say an FTDI breakout and watch
+the data go by on a dumb terminal, the things you want to catch with
+your eye are these.
+
+$GPGSA,A,1,,,,,,,,,,,,,,,*1E
+$GPRMC,235946.084,V,,,,,,,310109,,,N*44
+
+Generally they come out once a second, but some can be configured to
+go faster or slower.  Worth mentioning that some/many are at 4800 baud
+(N81) but sometimes faster, and some are configurable.  I say
+configurable, but most of the time if not all of the time you dont ever
+hook up the RX input on the GPS receiver, just power, ground and TX.
+(TX goes to RX on your mcu or smoke may come out).  So if things dont
+just work you may want a baud detect if you are getting extr generic
+or look at the output on a usb to uart interface (get the voltages right!)
+
+So anyway the GPGSA you will see A,1 basically when the GPS is not
+locked on.  When it goes to A,2 that is basically 2D and A,3 is 3D.  So
+if you see A,1 there then the time is quite likely wrong, you could
+parse for that but the RMC sentence takes care of us.  As above the
+first thing is the time  23:59:46  HH:MM:SS UTC the V means warning,
+you can choose to take it as is or you can wait until that changes to
+an A
+
+$GPRMC,014401.771,V,...
+$GPRMC,014402.771,V,...
+$GPRMC,014403.773,A,...
+$GPRMC,014404.775,A,...
+
+The particular one I am using this second leaves the position data
+empty when not locked, some might have stuff there.  It is all about
+counting commas, the newer standards might have more fields BTW, but
+they would be at the end I would assume.
+
+$GPRMC,235946.084,V,,,,,,,310109,,,N*44
+
+So the sentence starts with a dollar sign and ends with a *XX which is
+the checksum.  The checksum is a two digit hex number which is the XOR
+of all the characters after the $ and before the *.
+
+If we walk through that sentence and look at the ASCII character, the
+hex value for that character and the accumulated checksum as we go.
+
+$ 0x24
+G 0x47 : 0x47
+P 0x50 : 0x17
+R 0x52 : 0x45
+M 0x4D : 0x08
+C 0x43 : 0x4B
+, 0x2C : 0x67
+2 0x32 : 0x55
+3 0x33 : 0x66
+5 0x35 : 0x53
+9 0x39 : 0x6A
+4 0x34 : 0x5E
+6 0x36 : 0x68
+. 0x2E : 0x46
+0 0x30 : 0x76
+8 0x38 : 0x4E
+4 0x34 : 0x7A
+, 0x2C : 0x56
+V 0x56 : 0x00
+, 0x2C : 0x2C
+, 0x2C : 0x00
+, 0x2C : 0x2C
+, 0x2C : 0x00
+, 0x2C : 0x2C
+, 0x2C : 0x00
+, 0x2C : 0x2C
+3 0x33 : 0x1F
+1 0x31 : 0x2E
+0 0x30 : 0x1E
+1 0x31 : 0x2F
+0 0x30 : 0x1F
+9 0x39 : 0x26
+, 0x2C : 0x0A
+, 0x2C : 0x26
+, 0x2C : 0x0A
+N 0x4E : 0x44
+* 0x2A
+4 0x34
+4 0x34
+
+When we get to the * the checksum is 0x44 which is what it was supposed
+to be, so you could parse the *XX and check that value.
+
+We get a GPRMC every second ideally/normally, so what if we didnt
+parse all the way to the end?  What if we only went to the time and
+the comma after?  If we have a really bad serial connection well that
+is a bad thing, but if we get a hiccup on one, we get the right
+time on the next one so we could argue about whether or not to take
+a shortcut.  I have both, a short one that takes the shortcut, and
+a long one that doesnt.  Another argument is how much program space
+your microcontroller has.
+
+The code is written for a low resource microcontroller so that means
+I am assuming no multiply or divide, can burn a few extra instructions
+and not have to rely on the toolchains libraries.  So that is why
+you see this
+
+  rb=(rb<<3)+(rb<<1); //times 10
+
+instead of
+
+  rb=rb*10;
+
+Or one or a few subtractions rather than a divide, if I want AM/PM
+time worst case I have to subtract 12 from a number between 13 and 24
+or 13 and 23 right?  Why, burn a divide there, esp if your hardware
+doesnt have one and a huge generic software divide gets linked in.
+
+These are implemented as state machines and you call the state
+machine for each new character that comes in from whatever source.
+The test programs will simply read some captured data from a file
+in your system you will want to take the uart input and for each
+character that comes in feed it to this function.
+
+If you have not figured it out yet, yes it is somewhat trivial to
+parse this data.  Instead of banging out every time I want to do
+something.  Made this repo so I can just cut and paste from it.
+
+
+EST UTC-5 (winter)
+EDT UTC-4 (summer)
+CST UTC-6
+CDT UTC-5
+MST UTC-7
+MDT UTC-6
+PST UTC-8
+PDT UTC-7
+
+Arizona goes with California in the summer (so New Mexico in the winter)
+or PDT and MST or call it
+
+AST UTC-7
+
+
+
+
