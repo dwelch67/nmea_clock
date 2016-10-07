@@ -30,15 +30,19 @@ void show_clock ( void )
         last_time[3]=nmea_time[3];
         last_time[4]=0;
         printf(" %s",(char *)last_time);
+        //printf("%s\n",(char *)last_time);
         //update an HH:MM clock here
     }
     printf("\n");
 }
+//extern unsigned int dollars;
 int main ( int argc, char *argv[] )
 {
     unsigned int ra;
     unsigned int rb;
     FILE *fp;
+
+    //dollars=0;
 
     if(argc<2)
     {
@@ -67,4 +71,6 @@ int main ( int argc, char *argv[] )
         }
     }
     fclose(fp);
+    //printf("dollars %u\n",dollars);
+    return(0);
 }

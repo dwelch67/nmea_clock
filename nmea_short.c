@@ -1,5 +1,9 @@
 
 extern void show_clock ( void );
+
+
+//unsigned int dollars;
+
 //static
 unsigned int nmea_timezone;
 static unsigned int nmea_state;
@@ -31,6 +35,7 @@ int do_nmea ( unsigned char newchar )
         }
         case 1:
         {
+            //dollars++;
             if(newchar=='G') nmea_state++;
             else nmea_state=0;
             break;
@@ -83,16 +88,18 @@ int do_nmea ( unsigned char newchar )
         }
         case 8:
         {
+            nmea_state=0;
             //-------------
             if(newchar!='A')
             {
+                nmea_state=0;
                 return(1);
             }
             //-------------
-            //1234567 off
             //hhmmss
-            if(nmea_off<7)
+            if(nmea_off<6)
             {
+                nmea_state=0;
                 return(1);
             }
             //validate that the string is just numbers?

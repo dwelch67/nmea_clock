@@ -197,6 +197,10 @@ or PDT and MST or call it
 
 AST UTC-7
 
-
-
-
+Dug out a few year old receiver, it does not show time in the GPRMC
+until it has time to show, it appears to be correct with A,1 and a V
+after the time in the GPRMC.  Interesting.  I think it was an SPK
+which is perhaps now Copernicus?  So maybe we dont filter out the
+time with a V, indoors it may never get to 2D or 3D lock but may
+still have the right time (only takes one satellite to get the time,
+yes?)
